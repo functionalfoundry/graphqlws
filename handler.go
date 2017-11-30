@@ -52,13 +52,17 @@ func NewHandler(subscriptionManager SubscriptionManager) http.Handler {
 
 					delete(connections, conn)
 				},
-				StartOperation: func(conn Connection, opID string, data *StartMessagePayload) {
+				StartOperation: func(
+					conn Connection,
+					opID string,
+					data *StartMessagePayload,
+				) []error {
 					logger.WithFields(log.Fields{
 						"conn": conn.ID(),
 						"op":   opID,
 					}).Debug("Start operation")
 
-					subscriptionManager.AddSubscription(conn, &Subscription{
+					return subscriptionManager.AddSubscription(conn, &Subscription{
 						ID:            opID,
 						Query:         data.Query,
 						Variables:     data.Variables,
