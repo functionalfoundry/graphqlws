@@ -1,8 +1,22 @@
 package graphqlws
 
 import (
+	"errors"
+
+	"github.com/graphql-go/graphql"
+	"github.com/graphql-go/graphql/gqlerrors"
+	"github.com/graphql-go/graphql/language/parser"
 	log "github.com/sirupsen/logrus"
 )
+
+// Convert from validation errors to regular errors
+func translateValidationErrors(errors []gqlerrors.FormattedError) []error {
+	out := make([]error, len(errors))
+	for i := range errors {
+		out[i] = errors[i]
+	}
+	return out
+}
 
 // SubscriptionSendDataFunc is a function that sends updated data
 // for a specific subscription to the corresponding subscriber.
@@ -23,7 +37,7 @@ type Subscription struct {
 // and accessing the subscriptions made by GraphQL WS clients.
 type SubscriptionManager interface {
 	// AddSubscription adds a new subscription to the manager.
-	AddSubscription(Connection, *Subscription)
+	AddSubscription(Connection, *Subscription) []error
 
 	// RemoveSubscription removes a subscription from the manager.
 	RemoveSubscription(Connection, *Subscription)
@@ -38,25 +52,45 @@ type SubscriptionManager interface {
 
 type subscriptionManager struct {
 	subscriptions map[Connection]map[string]*Subscription
+	schema        *graphql.Schema
 	logger        *log.Entry
 }
 
 // NewSubscriptionManager creates a new subscription manager.
-func NewSubscriptionManager() SubscriptionManager {
+func NewSubscriptionManager(schema *graphql.Schema) SubscriptionManager {
 	manager := new(subscriptionManager)
 	manager.subscriptions = make(map[Connection]map[string]*Subscription)
 	manager.logger = NewLogger("subscriptions")
+	manager.schema = schema
 	return manager
 }
 
 func (m *subscriptionManager) AddSubscription(
 	conn Connection,
 	subscription *Subscription,
-) {
+) []error {
 	m.logger.WithFields(log.Fields{
 		"conn":         conn.ID(),
 		"subscription": subscription.ID,
 	}).Info("Add subscription")
+
+	// Parse the subscription query
+	document, err := parser.Parse(parser.ParseParams{
+		Source: subscription.Query,
+	})
+	if err != nil {
+		m.logger.WithField("err", err).Warn("Failed to parse subscription query")
+		return []error{err}
+	}
+
+	// Validate the query document
+	validation := graphql.ValidateDocument(m.schema, document, nil)
+	if !validation.IsValid {
+		m.logger.WithFields(log.Fields{
+			"errors": validation.Errors,
+		}).Warn("Failed to validate subscription query")
+		return translateValidationErrors(validation.Errors)
+	}
 
 	// Allocate the connection's map of subscription IDs to
 	// subscriptions on demand
@@ -70,9 +104,12 @@ func (m *subscriptionManager) AddSubscription(
 			"conn":         conn.ID(),
 			"subscription": subscription.ID,
 		}).Warn("Cannot register subscription twice")
-	} else {
-		m.subscriptions[conn][subscription.ID] = subscription
+		return []error{errors.New("Cannot register subscription twice")}
 	}
+
+	m.subscriptions[conn][subscription.ID] = subscription
+
+	return nil
 }
 
 func (m *subscriptionManager) RemoveSubscription(
