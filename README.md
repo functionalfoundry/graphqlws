@@ -10,6 +10,7 @@ Implementation of the Apollo GraphQL WebSocket protocol in Go.
    go get github.com/x-cray/logrus-prefixed-formatter
    go get github.com/google/uuid
    go get github.com/gorilla/websocket
+   go get github.com/graphql-go/graphql
    ```
 2. Clone the repository:
    ```sh
