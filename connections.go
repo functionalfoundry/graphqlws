@@ -51,7 +51,7 @@ type OperationMessage struct {
 	Payload interface{} `json:"payload"`
 }
 
-func (msg *OperationMessage) String() string {
+func (msg OperationMessage) String() string {
 	s, _ := json.Marshal(msg)
 	if s != nil {
 		return string(s)
@@ -72,7 +72,7 @@ type ConnectionEventHandlers struct {
 	// operation be started (typically a subscription). Event handlers
 	// are expected to take the necessary steps to register the operation
 	// and send data back to the client with the results eventually.
-	StartOperation func(Connection, string, *StartMessagePayload)
+	StartOperation func(Connection, string, *StartMessagePayload) []error
 
 	// StopOperation is called whenever the client stops a previously
 	// started GraphQL operation (typically a subscription). Event handlers
@@ -104,11 +104,11 @@ type connection struct {
 	ws            *websocket.Conn
 	eventHandlers *ConnectionEventHandlers
 	logger        *log.Entry
-	outgoing      chan *OperationMessage
+	outgoing      chan OperationMessage
 }
 
-func operationMessageForType(messageType string) *OperationMessage {
-	return &OperationMessage{
+func operationMessageForType(messageType string) OperationMessage {
+	return OperationMessage{
 		Type: messageType,
 	}
 }
@@ -123,7 +123,7 @@ func NewConnection(ws *websocket.Conn, eventHandlers *ConnectionEventHandlers) C
 	conn.eventHandlers = eventHandlers
 	conn.logger = NewLogger("connection/" + conn.id)
 
-	conn.outgoing = make(chan *OperationMessage)
+	conn.outgoing = make(chan OperationMessage)
 
 	go conn.writeLoop()
 	go conn.readLoop()
@@ -150,8 +150,15 @@ func (conn *connection) SendError(err error) {
 	conn.outgoing <- msg
 }
 
+func (conn *connection) sendOperationErrors(opID string, errs []error) {
+	msg := operationMessageForType(gqlError)
+	msg.ID = opID
+	msg.Payload = errs
+	conn.outgoing <- msg
+}
+
 func (conn *connection) close() {
-	// Close the write loop by closing the outgoing messages channel
+	// Close the write loop by closing the outgoing messages channels
 	close(conn.outgoing)
 
 	// Notify event handlers
@@ -171,7 +178,7 @@ func (conn *connection) writeLoop() {
 	for {
 		select {
 		// Take the next outgoing message from the channel
-		case message, ok := <-conn.outgoing:
+		case msg, ok := <-conn.outgoing:
 			// Close the write loop when the outgoing messages channel is closed;
 			// this will close the connection
 			if !ok {
@@ -179,7 +186,7 @@ func (conn *connection) writeLoop() {
 			}
 
 			conn.logger.WithFields(log.Fields{
-				"message": message.String(),
+				"msg": msg.String(),
 			}).Debug("Send message")
 
 			conn.ws.SetWriteDeadline(time.Now().Add(writeTimeout))
@@ -187,7 +194,7 @@ func (conn *connection) writeLoop() {
 			// Send the message to the client; if this times out, the WebSocket
 			// connection will be corrupt, hence we need to close the write loop
 			// and the connection immediately
-			if err := conn.ws.WriteJSON(message); err != nil {
+			if err := conn.ws.WriteJSON(msg); err != nil {
 				conn.logger.WithFields(log.Fields{
 					"err": err,
 				}).Warn("Sending message failed")
@@ -240,7 +247,10 @@ func (conn *connection) readLoop() {
 				if err := json.Unmarshal(rawPayload, &data); err != nil {
 					conn.SendError(errors.New("Invalid GQL_START payload"))
 				} else {
-					conn.eventHandlers.StartOperation(conn, msg.ID, &data)
+					errs := conn.eventHandlers.StartOperation(conn, msg.ID, &data)
+					if errs != nil {
+						conn.sendOperationErrors(msg.ID, errs)
+					}
 				}
 			}
 
@@ -262,7 +272,7 @@ func (conn *connection) readLoop() {
 		// an error
 		default:
 			conn.logger.WithFields(log.Fields{
-				"message": msg.String(),
+				"msg": msg.String(),
 			}).Error("Unhandled message")
 		}
 	}
