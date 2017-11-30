@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/functionalfoundry/graphqlws"
+	"github.com/graphql-go/graphql"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -11,12 +12,30 @@ func main() {
 	log.SetLevel(log.InfoLevel)
 	log.Info("Starting example server on :8085")
 
-	subscriptionManager := graphqlws.NewSubscriptionManager()
+	// GraphQL schema
+	fields := graphql.Fields{
+		"hello": &graphql.Field{
+			Type: graphql.String,
+			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+				return "world", nil
+			},
+		},
+	}
+	rootQuery := graphql.ObjectConfig{Name: "RootQuery", Fields: fields}
+	schemaConfig := graphql.SchemaConfig{Query: graphql.NewObject(rootQuery)}
+	schema, err := graphql.NewSchema(schemaConfig)
+
+	if err != nil {
+		log.WithField("err", err).Panic("GraphQL schema is invalid")
+	}
+
+	// Create subscription manager and GraphQL WS handler
+	subscriptionManager := graphqlws.NewSubscriptionManager(&schema)
 	websocketHandler := graphqlws.NewHandler(subscriptionManager)
 
+	// Serve the GraphQL WS endpoint
 	http.Handle("/subscriptions", websocketHandler)
-
 	if err := http.ListenAndServe(":8085", nil); err != nil {
-		log.WithField("error", err).Error("Failed to start server")
+		log.WithField("err", err).Error("Failed to start server")
 	}
 }
