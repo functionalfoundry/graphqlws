@@ -6,7 +6,7 @@ import (
 
 // SubscriptionSendDataFunc is a function that sends updated data
 // for a specific subscription to the corresponding subscriber.
-type SubscriptionSendDataFunc func(*Subscription, *OperationData)
+type SubscriptionSendDataFunc func(*Subscription, *DataMessagePayload)
 
 // Subscription holds all information about a GraphQL subscription
 // made by a client, including a function to send data back to the
@@ -14,8 +14,8 @@ type SubscriptionSendDataFunc func(*Subscription, *OperationData)
 type Subscription struct {
 	ID            string
 	Query         string
-	Variables     *map[string]interface{}
-	OperationName *string
+	Variables     map[string]interface{}
+	OperationName string
 	SendData      SubscriptionSendDataFunc
 }
 
