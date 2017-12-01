@@ -36,6 +36,10 @@ type Subscription struct {
 // SubscriptionManager provides a high-level interface to managing
 // and accessing the subscriptions made by GraphQL WS clients.
 type SubscriptionManager interface {
+	// Subscriptions returns all registered subscriptions, grouped
+	// by connection.
+	Subscriptions() map[Connection]map[string]*Subscription
+
 	// AddSubscription adds a new subscription to the manager.
 	AddSubscription(Connection, *Subscription) []error
 
@@ -63,6 +67,10 @@ func NewSubscriptionManager(schema *graphql.Schema) SubscriptionManager {
 	manager.logger = NewLogger("subscriptions")
 	manager.schema = schema
 	return manager
+}
+
+func (m *subscriptionManager) Subscriptions() map[Connection]map[string]*Subscription {
+	return m.subscriptions
 }
 
 func (m *subscriptionManager) AddSubscription(
