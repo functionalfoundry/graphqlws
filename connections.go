@@ -2,6 +2,7 @@ package graphqlws
 
 import (
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -29,18 +30,25 @@ const (
 	writeTimeout = 10 * time.Second
 )
 
-// OperationMessagePayload stores all parameters of an operation.
-type OperationMessagePayload struct {
-	Query         string                  `json:"query"`
-	Variables     *map[string]interface{} `json:"variables"`
-	OperationName *string                 `json:"operationName"`
+// StartMessagePayload defines the parameters of an operation that
+// a client requests to be started.
+type StartMessagePayload struct {
+	Query         string                 `json:"query"`
+	Variables     map[string]interface{} `json:"variables"`
+	OperationName string                 `json:"operationName"`
 }
 
-// OperationMessage represents a standard GraphQL WebSocket message.
+// DataMessagePayload defines the result data of an operation.
+type DataMessagePayload struct {
+	Data   interface{} `json:"data"`
+	Errors []error     `json:"errors"`
+}
+
+// OperationMessage represents a GraphQL WebSocket message.
 type OperationMessage struct {
-	ID      *string                 `json:"id"`
-	Type    *string                 `json:"type"`
-	Payload OperationMessagePayload `json:"payload"`
+	ID      string      `json:"id"`
+	Type    string      `json:"type"`
+	Payload interface{} `json:"payload"`
 }
 
 func (msg *OperationMessage) String() string {
@@ -64,13 +72,13 @@ type ConnectionEventHandlers struct {
 	// operation be started (typically a subscription). Event handlers
 	// are expected to take the necessary steps to register the operation
 	// and send data back to the client with the results eventually.
-	StartOperation func(Connection, *OperationMessage)
+	StartOperation func(Connection, string, *StartMessagePayload)
 
 	// StopOperation is called whenever the client stops a previously
 	// started GraphQL operation (typically a subscription). Event handlers
 	// are expected to unregister the operation and stop sending result
 	// data to the client.
-	StopOperation func(Connection, *OperationMessage)
+	StopOperation func(Connection, string)
 }
 
 // Connection is an interface to represent GraphQL WebSocket connections.
@@ -78,26 +86,13 @@ type ConnectionEventHandlers struct {
 type Connection interface {
 	// ID returns the unique ID of the connection.
 	ID() string
-}
 
-// OperationDataPayload stores the data of a GraphQL execution result.
-type OperationDataPayload struct {
-	Data   map[string]interface{} `json:"data"`
-	Errors []error                `json:"errors"`
-}
+	// SendData sends results of executing an operation (typically a
+	// subscription) to the client.
+	SendData(string, *DataMessagePayload)
 
-// OperationData represents a GraphQL execution result for an operation.
-type OperationData struct {
-	ID      string               `json:"id"`
-	Payload OperationDataPayload `json:"payload"`
-}
-
-func (data *OperationData) String() string {
-	s, _ := json.Marshal(data)
-	if s != nil {
-		return string(s)
-	}
-	return "<invalid>"
+	// SendError sends an error to the client.
+	SendError(error)
 }
 
 /**
@@ -114,7 +109,7 @@ type connection struct {
 
 func operationMessageForType(messageType string) *OperationMessage {
 	return &OperationMessage{
-		Type: &messageType,
+		Type: messageType,
 	}
 }
 
@@ -140,6 +135,19 @@ func NewConnection(ws *websocket.Conn, eventHandlers *ConnectionEventHandlers) C
 
 func (conn *connection) ID() string {
 	return conn.id
+}
+
+func (conn *connection) SendData(opID string, data *DataMessagePayload) {
+	msg := operationMessageForType(gqlData)
+	msg.ID = opID
+	msg.Payload = data
+	conn.outgoing <- msg
+}
+
+func (conn *connection) SendError(err error) {
+	msg := operationMessageForType(gqlError)
+	msg.Payload = err
+	conn.outgoing <- msg
 }
 
 func (conn *connection) close() {
@@ -197,8 +205,11 @@ func (conn *connection) readLoop() {
 
 	for {
 		// Read the next message received from the client
-		message := &OperationMessage{}
-		err := conn.ws.ReadJSON(message)
+		rawPayload := json.RawMessage{}
+		msg := OperationMessage{
+			Payload: &rawPayload,
+		}
+		err := conn.ws.ReadJSON(&msg)
 
 		// If this causes an error, close the connection and read loop immediately;
 		// see https://github.com/gorilla/websocket/blob/master/conn.go#L924 for
@@ -212,10 +223,11 @@ func (conn *connection) readLoop() {
 		}
 
 		conn.logger.WithFields(log.Fields{
-			"message": message.String(),
+			"id":   msg.ID,
+			"type": msg.Type,
 		}).Debug("Received message")
 
-		switch *message.Type {
+		switch msg.Type {
 
 		// When the GraphQL WS connection is initiated, send an ACK back
 		case gqlConnectionInit:
@@ -224,13 +236,18 @@ func (conn *connection) readLoop() {
 		// Let event handlers deal with starting operations
 		case gqlStart:
 			if conn.eventHandlers != nil {
-				conn.eventHandlers.StartOperation(conn, message)
+				data := StartMessagePayload{}
+				if err := json.Unmarshal(rawPayload, &data); err != nil {
+					conn.SendError(errors.New("Invalid GQL_START payload"))
+				} else {
+					conn.eventHandlers.StartOperation(conn, msg.ID, &data)
+				}
 			}
 
 		// Let event handlers deal with stopping operations
 		case gqlStop:
 			if conn.eventHandlers != nil {
-				conn.eventHandlers.StopOperation(conn, message)
+				conn.eventHandlers.StopOperation(conn, msg.ID)
 			}
 
 		// When the GraphQL WS connection is terminated by the client,
@@ -245,7 +262,7 @@ func (conn *connection) readLoop() {
 		// an error
 		default:
 			conn.logger.WithFields(log.Fields{
-				"message": message.String(),
+				"message": msg.String(),
 			}).Error("Unhandled message")
 		}
 	}
