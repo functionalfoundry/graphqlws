@@ -3,7 +3,7 @@ package main
 import (
 	"net/http"
 
-	"github.com/functionalfoundry/graphqlws/server"
+	"github.com/functionalfoundry/graphqlws"
 	log "github.com/sirupsen/logrus"
 )
 
