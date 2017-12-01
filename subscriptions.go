@@ -84,7 +84,7 @@ func (m *subscriptionManager) RemoveSubscription(
 		"subscription": subscription.ID,
 	}).Info("Remove subscription")
 
-	// Remove the subscription from its connections' subscriton map
+	// Remove the subscription from its connections' subscription map
 	delete(m.subscriptions[conn], subscription.ID)
 }
 
