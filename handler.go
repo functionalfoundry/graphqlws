@@ -3,8 +3,8 @@ package graphqlws
 import (
 	"net/http"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/gorilla/websocket"
+	log "github.com/sirupsen/logrus"
 )
 
 // NewHandler creates a WebSocket handler for GraphQL WebSocket connections.
@@ -43,7 +43,7 @@ func NewHandler(subscriptionManager SubscriptionManager) http.Handler {
 
 			// Establish a GraphQL WebSocket connection
 			conn := NewConnection(ws, &ConnectionEventHandlers{
-				Close: func (conn Connection) {
+				Close: func(conn Connection) {
 					logger.WithFields(log.Fields{
 						"conn": conn.ID(),
 					}).Debug("Closing connection")
@@ -52,28 +52,25 @@ func NewHandler(subscriptionManager SubscriptionManager) http.Handler {
 
 					delete(connections, conn)
 				},
-				StartOperation: func (conn Connection, msg *OperationMessage) {
+				StartOperation: func(conn Connection, opID string, data *StartMessagePayload) {
 					logger.WithFields(log.Fields{
 						"conn": conn.ID(),
-						"op": *msg.ID,
+						"op":   opID,
 					}).Debug("Start operation")
 
 					subscriptionManager.AddSubscription(conn, &Subscription{
-						ID: *msg.ID,
-						Query: msg.Payload.Query,
-						Variables: msg.Payload.Variables,
-						OperationName: msg.Payload.OperationName,
-						SendData: func(subscription *Subscription, data *OperationData) {
-							logger.WithFields(log.Fields{
-								"conn": conn.ID(),
-								"data": data.String(),
-							}).Debug("Send subscription update to client")
+						ID:            opID,
+						Query:         data.Query,
+						Variables:     data.Variables,
+						OperationName: data.OperationName,
+						SendData: func(subscription *Subscription, data *DataMessagePayload) {
+							conn.SendData(opID, data)
 						},
 					})
 				},
-				StopOperation: func (conn Connection, msg *OperationMessage) {
+				StopOperation: func(conn Connection, opID string) {
 					subscriptionManager.RemoveSubscription(conn, &Subscription{
-						ID: *msg.ID,
+						ID: opID,
 					})
 				},
 			})
