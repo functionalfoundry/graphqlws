@@ -5,6 +5,7 @@ import (
 
 	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/graphql/gqlerrors"
+	"github.com/graphql-go/graphql/language/ast"
 	"github.com/graphql-go/graphql/language/parser"
 	log "github.com/sirupsen/logrus"
 )
@@ -31,6 +32,7 @@ type Subscription struct {
 	Variables     map[string]interface{}
 	OperationName string
 	SendData      SubscriptionSendDataFunc
+	Document      *ast.Document
 }
 
 // ConnectionSubscriptions defines a map of all subscriptions of
@@ -107,6 +109,9 @@ func (m *subscriptionManager) AddSubscription(
 		}).Warn("Failed to validate subscription query")
 		return ErrorsFromGraphQLErrors(validation.Errors)
 	}
+
+	// Remember the query document for later
+	subscription.Document = document
 
 	// Allocate the connection's map of subscription IDs to
 	// subscriptions on demand
