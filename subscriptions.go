@@ -31,8 +31,27 @@ type Subscription struct {
 	Query         string
 	Variables     map[string]interface{}
 	OperationName string
-	SendData      SubscriptionSendDataFunc
 	Document      *ast.Document
+	Fields        []string
+	Connection    Connection
+	SendData      SubscriptionSendDataFunc
+}
+
+// MatchesField returns true if the subscription is for data that
+// belongs to the given field.
+func (s *Subscription) MatchesField(field string) bool {
+	if s.Document == nil || len(s.Fields) == 0 {
+		return false
+	}
+
+	// The subscription matches the field if any of the queries have
+	// the same name as the field
+	for _, name := range s.Fields {
+		if name == field {
+			return true
+		}
+	}
+	return false
 }
 
 // ConnectionSubscriptions defines a map of all subscriptions of
@@ -112,6 +131,9 @@ func (m *subscriptionManager) AddSubscription(
 
 	// Remember the query document for later
 	subscription.Document = document
+
+	// Extract query names from the document (typically, there should only be one)
+	subscription.Fields = subscriptionFieldNamesFromDocument(document)
 
 	// Allocate the connection's map of subscription IDs to
 	// subscriptions on demand
