@@ -9,8 +9,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// Convert from validation errors to regular errors
-func translateValidationErrors(errors []gqlerrors.FormattedError) []error {
+// ErrorsFromGraphQLErrors convert from GraphQL errors to regular errors.
+func ErrorsFromGraphQLErrors(errors []gqlerrors.FormattedError) []error {
 	out := make([]error, len(errors))
 	for i := range errors {
 		out[i] = errors[i]
@@ -33,12 +33,20 @@ type Subscription struct {
 	SendData      SubscriptionSendDataFunc
 }
 
+// ConnectionSubscriptions defines a map of all subscriptions of
+// a connection by their IDs.
+type ConnectionSubscriptions map[string]*Subscription
+
+// Subscriptions defines a map of connections to a map of
+// subscription IDs to subscriptions.
+type Subscriptions map[Connection]ConnectionSubscriptions
+
 // SubscriptionManager provides a high-level interface to managing
 // and accessing the subscriptions made by GraphQL WS clients.
 type SubscriptionManager interface {
 	// Subscriptions returns all registered subscriptions, grouped
 	// by connection.
-	Subscriptions() map[Connection]map[string]*Subscription
+	Subscriptions() Subscriptions
 
 	// AddSubscription adds a new subscription to the manager.
 	AddSubscription(Connection, *Subscription) []error
@@ -55,7 +63,7 @@ type SubscriptionManager interface {
  */
 
 type subscriptionManager struct {
-	subscriptions map[Connection]map[string]*Subscription
+	subscriptions Subscriptions
 	schema        *graphql.Schema
 	logger        *log.Entry
 }
@@ -63,13 +71,13 @@ type subscriptionManager struct {
 // NewSubscriptionManager creates a new subscription manager.
 func NewSubscriptionManager(schema *graphql.Schema) SubscriptionManager {
 	manager := new(subscriptionManager)
-	manager.subscriptions = make(map[Connection]map[string]*Subscription)
+	manager.subscriptions = make(Subscriptions)
 	manager.logger = NewLogger("subscriptions")
 	manager.schema = schema
 	return manager
 }
 
-func (m *subscriptionManager) Subscriptions() map[Connection]map[string]*Subscription {
+func (m *subscriptionManager) Subscriptions() Subscriptions {
 	return m.subscriptions
 }
 
@@ -97,13 +105,13 @@ func (m *subscriptionManager) AddSubscription(
 		m.logger.WithFields(log.Fields{
 			"errors": validation.Errors,
 		}).Warn("Failed to validate subscription query")
-		return translateValidationErrors(validation.Errors)
+		return ErrorsFromGraphQLErrors(validation.Errors)
 	}
 
 	// Allocate the connection's map of subscription IDs to
 	// subscriptions on demand
 	if m.subscriptions[conn] == nil {
-		m.subscriptions[conn] = make(map[string]*Subscription)
+		m.subscriptions[conn] = make(ConnectionSubscriptions)
 	}
 
 	// Add the subscription if it hasn't already been added
