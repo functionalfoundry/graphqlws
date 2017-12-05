@@ -3,6 +3,7 @@ package graphqlws
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -29,6 +30,12 @@ const (
 	// Timeout for outgoing messages
 	writeTimeout = 10 * time.Second
 )
+
+// InitMessagePayload defines the parameters of a connection
+// init message.
+type InitMessagePayload struct {
+	AuthToken string `json:"authToken"`
+}
 
 // StartMessagePayload defines the parameters of an operation that
 // a client requests to be started.
@@ -59,6 +66,10 @@ func (msg OperationMessage) String() string {
 	return "<invalid>"
 }
 
+// UserFromAuthTokenFunc is a function that resolves an auth token
+// into a user (or returns an error if that isn't possible).
+type UserFromAuthTokenFunc func(token string) (interface{}, error)
+
 // ConnectionEventHandlers define the event handlers for a connection.
 // Event handlers allow other system components to react to events such
 // as the connection closing or an operation being started or stopped.
@@ -81,11 +92,21 @@ type ConnectionEventHandlers struct {
 	StopOperation func(Connection, string)
 }
 
+// ConnectionConfig defines the configuration parameters of a
+// GraphQL WebSocket connection.
+type ConnectionConfig struct {
+	UserFromAuthToken UserFromAuthTokenFunc
+	EventHandlers     ConnectionEventHandlers
+}
+
 // Connection is an interface to represent GraphQL WebSocket connections.
 // Each connection is associated with an ID that is unique to the server.
 type Connection interface {
 	// ID returns the unique ID of the connection.
 	ID() string
+
+	// User returns the user associated with the connection (or nil).
+	User() interface{}
 
 	// SendData sends results of executing an operation (typically a
 	// subscription) to the client.
@@ -100,11 +121,12 @@ type Connection interface {
  */
 
 type connection struct {
-	id            string
-	ws            *websocket.Conn
-	eventHandlers *ConnectionEventHandlers
-	logger        *log.Entry
-	outgoing      chan OperationMessage
+	id       string
+	ws       *websocket.Conn
+	config   ConnectionConfig
+	logger   *log.Entry
+	outgoing chan OperationMessage
+	user     interface{}
 }
 
 func operationMessageForType(messageType string) OperationMessage {
@@ -116,11 +138,11 @@ func operationMessageForType(messageType string) OperationMessage {
 // NewConnection establishes a GraphQL WebSocket connection. It implements
 // the GraphQL WebSocket protocol by managing its internal state and handling
 // the client-server communication.
-func NewConnection(ws *websocket.Conn, eventHandlers *ConnectionEventHandlers) Connection {
+func NewConnection(ws *websocket.Conn, config ConnectionConfig) Connection {
 	conn := new(connection)
 	conn.id = uuid.New().String()
 	conn.ws = ws
-	conn.eventHandlers = eventHandlers
+	conn.config = config
 	conn.logger = NewLogger("connection/" + conn.id)
 
 	conn.outgoing = make(chan OperationMessage)
@@ -135,6 +157,10 @@ func NewConnection(ws *websocket.Conn, eventHandlers *ConnectionEventHandlers) C
 
 func (conn *connection) ID() string {
 	return conn.id
+}
+
+func (conn *connection) User() interface{} {
+	return conn.user
 }
 
 func (conn *connection) SendData(opID string, data *DataMessagePayload) {
@@ -162,8 +188,8 @@ func (conn *connection) close() {
 	close(conn.outgoing)
 
 	// Notify event handlers
-	if conn.eventHandlers != nil {
-		conn.eventHandlers.Close(conn)
+	if conn.config.EventHandlers.Close != nil {
+		conn.config.EventHandlers.Close(conn)
 	}
 
 	conn.logger.Info("Closed connection")
@@ -238,16 +264,31 @@ func (conn *connection) readLoop() {
 
 		// When the GraphQL WS connection is initiated, send an ACK back
 		case gqlConnectionInit:
-			conn.outgoing <- operationMessageForType(gqlConnectionAck)
+			data := InitMessagePayload{}
+			if err := json.Unmarshal(rawPayload, &data); err != nil {
+				conn.SendError(errors.New("Invalid GQL_CONNECTION_INIT payload"))
+			} else {
+				if conn.config.UserFromAuthToken != nil {
+					user, err := conn.config.UserFromAuthToken(data.AuthToken)
+					if err != nil {
+						conn.SendError(fmt.Errorf("Failed to authenticate user: %v", err))
+					} else {
+						conn.user = user
+						conn.outgoing <- operationMessageForType(gqlConnectionAck)
+					}
+				} else {
+					conn.outgoing <- operationMessageForType(gqlConnectionAck)
+				}
+			}
 
 		// Let event handlers deal with starting operations
 		case gqlStart:
-			if conn.eventHandlers != nil {
+			if conn.config.EventHandlers.StartOperation != nil {
 				data := StartMessagePayload{}
 				if err := json.Unmarshal(rawPayload, &data); err != nil {
 					conn.SendError(errors.New("Invalid GQL_START payload"))
 				} else {
-					errs := conn.eventHandlers.StartOperation(conn, msg.ID, &data)
+					errs := conn.config.EventHandlers.StartOperation(conn, msg.ID, &data)
 					if errs != nil {
 						conn.sendOperationErrors(msg.ID, errs)
 					}
@@ -256,8 +297,8 @@ func (conn *connection) readLoop() {
 
 		// Let event handlers deal with stopping operations
 		case gqlStop:
-			if conn.eventHandlers != nil {
-				conn.eventHandlers.StopOperation(conn, msg.ID)
+			if conn.config.EventHandlers.StopOperation != nil {
+				conn.config.EventHandlers.StopOperation(conn, msg.ID)
 			}
 
 		// When the GraphQL WS connection is terminated by the client,
