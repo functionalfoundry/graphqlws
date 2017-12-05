@@ -31,7 +31,12 @@ func main() {
 
 	// Create subscription manager and GraphQL WS handler
 	subscriptionManager := graphqlws.NewSubscriptionManager(&schema)
-	websocketHandler := graphqlws.NewHandler(subscriptionManager)
+	websocketHandler := graphqlws.NewHandler(graphqlws.HandlerConfig{
+		SubscriptionManager: subscriptionManager,
+		UserFromAuthToken: func(token string) (interface{}, error) {
+			return "Default user", nil
+		},
+	})
 
 	// Serve the GraphQL WS endpoint
 	http.Handle("/subscriptions", websocketHandler)
