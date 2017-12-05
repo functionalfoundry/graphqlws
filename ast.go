@@ -12,7 +12,7 @@ func operationDefinitionsWithOperation(
 	for _, node := range doc.Definitions {
 		if node.GetKind() == "OperationDefinition" {
 			if def, ok := node.(*ast.OperationDefinition); ok {
-				if def.Name.Value == op {
+				if def.Operation == op {
 					defs = append(defs, def)
 				}
 			}
