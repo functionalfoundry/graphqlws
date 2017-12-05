@@ -7,10 +7,16 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// HandlerConfig stores the configuration of a GraphQL WebSocket handler.
+type HandlerConfig struct {
+	SubscriptionManager SubscriptionManager
+	UserFromAuthToken   UserFromAuthTokenFunc
+}
+
 // NewHandler creates a WebSocket handler for GraphQL WebSocket connections.
 // This handler takes a SubscriptionManager and adds/removes subscriptions
 // as they are started/stopped by the client.
-func NewHandler(subscriptionManager SubscriptionManager) http.Handler {
+func NewHandler(config HandlerConfig) http.Handler {
 	// Create a WebSocket upgrader that requires clients to implement
 	// the "graphql-ws" protocol
 	var upgrader = websocket.Upgrader{
@@ -19,6 +25,7 @@ func NewHandler(subscriptionManager SubscriptionManager) http.Handler {
 	}
 
 	logger := NewLogger("handler")
+	subscriptionManager := config.SubscriptionManager
 
 	// Create a map (used like a set) to manage client connections
 	var connections = make(map[Connection]bool)
@@ -42,40 +49,46 @@ func NewHandler(subscriptionManager SubscriptionManager) http.Handler {
 			}
 
 			// Establish a GraphQL WebSocket connection
-			conn := NewConnection(ws, &ConnectionEventHandlers{
-				Close: func(conn Connection) {
-					logger.WithFields(log.Fields{
-						"conn": conn.ID(),
-					}).Debug("Closing connection")
+			conn := NewConnection(ws, ConnectionConfig{
+				UserFromAuthToken: config.UserFromAuthToken,
+				EventHandlers: ConnectionEventHandlers{
+					Close: func(conn Connection) {
+						logger.WithFields(log.Fields{
+							"conn": conn.ID(),
+							"user": conn.User(),
+						}).Debug("Closing connection")
 
-					subscriptionManager.RemoveSubscriptions(conn)
+						subscriptionManager.RemoveSubscriptions(conn)
 
-					delete(connections, conn)
-				},
-				StartOperation: func(
-					conn Connection,
-					opID string,
-					data *StartMessagePayload,
-				) []error {
-					logger.WithFields(log.Fields{
-						"conn": conn.ID(),
-						"op":   opID,
-					}).Debug("Start operation")
+						delete(connections, conn)
+					},
+					StartOperation: func(
+						conn Connection,
+						opID string,
+						data *StartMessagePayload,
+					) []error {
+						logger.WithFields(log.Fields{
+							"conn": conn.ID(),
+							"op":   opID,
+							"user": conn.User(),
+						}).Debug("Start operation")
 
-					return subscriptionManager.AddSubscription(conn, &Subscription{
-						ID:            opID,
-						Query:         data.Query,
-						Variables:     data.Variables,
-						OperationName: data.OperationName,
-						SendData: func(subscription *Subscription, data *DataMessagePayload) {
-							conn.SendData(opID, data)
-						},
-					})
-				},
-				StopOperation: func(conn Connection, opID string) {
-					subscriptionManager.RemoveSubscription(conn, &Subscription{
-						ID: opID,
-					})
+						return subscriptionManager.AddSubscription(conn, &Subscription{
+							ID:            opID,
+							Query:         data.Query,
+							Variables:     data.Variables,
+							OperationName: data.OperationName,
+							Connection:    conn,
+							SendData: func(subscription *Subscription, data *DataMessagePayload) {
+								conn.SendData(opID, data)
+							},
+						})
+					},
+					StopOperation: func(conn Connection, opID string) {
+						subscriptionManager.RemoveSubscription(conn, &Subscription{
+							ID: opID,
+						})
+					},
 				},
 			})
 			connections[conn] = true
