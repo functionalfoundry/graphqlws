@@ -271,7 +271,9 @@ func (conn *connection) readLoop() {
 				if conn.config.Authenticate != nil {
 					user, err := conn.config.Authenticate(data.AuthToken)
 					if err != nil {
-						conn.SendError(fmt.Errorf("Failed to authenticate user: %v", err))
+						msg := operationMessageForType(gqlConnectionError)
+						msg.Payload = fmt.Sprintf("Failed to authenticate user: %v", err)
+						conn.outgoing <- msg
 					} else {
 						conn.user = user
 						conn.outgoing <- operationMessageForType(gqlConnectionAck)
