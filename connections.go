@@ -172,7 +172,7 @@ func (conn *connection) SendData(opID string, data *DataMessagePayload) {
 
 func (conn *connection) SendError(err error) {
 	msg := operationMessageForType(gqlError)
-	msg.Payload = err
+	msg.Payload = err.Error()
 	conn.outgoing <- msg
 }
 
