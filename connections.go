@@ -66,9 +66,9 @@ func (msg OperationMessage) String() string {
 	return "<invalid>"
 }
 
-// UserFromAuthTokenFunc is a function that resolves an auth token
+// AuthenticateFunc is a function that resolves an auth token
 // into a user (or returns an error if that isn't possible).
-type UserFromAuthTokenFunc func(token string) (interface{}, error)
+type AuthenticateFunc func(token string) (interface{}, error)
 
 // ConnectionEventHandlers define the event handlers for a connection.
 // Event handlers allow other system components to react to events such
@@ -95,8 +95,8 @@ type ConnectionEventHandlers struct {
 // ConnectionConfig defines the configuration parameters of a
 // GraphQL WebSocket connection.
 type ConnectionConfig struct {
-	UserFromAuthToken UserFromAuthTokenFunc
-	EventHandlers     ConnectionEventHandlers
+	Authenticate  AuthenticateFunc
+	EventHandlers ConnectionEventHandlers
 }
 
 // Connection is an interface to represent GraphQL WebSocket connections.
@@ -268,8 +268,8 @@ func (conn *connection) readLoop() {
 			if err := json.Unmarshal(rawPayload, &data); err != nil {
 				conn.SendError(errors.New("Invalid GQL_CONNECTION_INIT payload"))
 			} else {
-				if conn.config.UserFromAuthToken != nil {
-					user, err := conn.config.UserFromAuthToken(data.AuthToken)
+				if conn.config.Authenticate != nil {
+					user, err := conn.config.Authenticate(data.AuthToken)
 					if err != nil {
 						conn.SendError(fmt.Errorf("Failed to authenticate user: %v", err))
 					} else {

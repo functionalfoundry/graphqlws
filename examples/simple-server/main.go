@@ -33,7 +33,7 @@ func main() {
 	subscriptionManager := graphqlws.NewSubscriptionManager(&schema)
 	websocketHandler := graphqlws.NewHandler(graphqlws.HandlerConfig{
 		SubscriptionManager: subscriptionManager,
-		UserFromAuthToken: func(token string) (interface{}, error) {
+		Authenticate: func(token string) (interface{}, error) {
 			return "Default user", nil
 		},
 	})
