@@ -10,7 +10,7 @@ import (
 // HandlerConfig stores the configuration of a GraphQL WebSocket handler.
 type HandlerConfig struct {
 	SubscriptionManager SubscriptionManager
-	UserFromAuthToken   UserFromAuthTokenFunc
+	Authenticate        AuthenticateFunc
 }
 
 // NewHandler creates a WebSocket handler for GraphQL WebSocket connections.
@@ -50,7 +50,7 @@ func NewHandler(config HandlerConfig) http.Handler {
 
 			// Establish a GraphQL WebSocket connection
 			conn := NewConnection(ws, ConnectionConfig{
-				UserFromAuthToken: config.UserFromAuthToken,
+				Authenticate: config.Authenticate,
 				EventHandlers: ConnectionEventHandlers{
 					Close: func(conn Connection) {
 						logger.WithFields(log.Fields{
