@@ -2,6 +2,8 @@
 
 Implementation of the [GraphQL over WebSocket protocol] in Go.
 
+[API Documentation](https://godoc.org/github.com/functionalfoundry/graphqlws)
+
 ## Getting started
 
 1. Install dependencies:
@@ -32,30 +34,35 @@ Implementation of the [GraphQL over WebSocket protocol] in Go.
 package main
 
 import (
-  "net/http"
+	"net/http"
 
-  "github.com/functionalfoundry/graphqlws"
+	"github.com/functionalfoundry/graphqlws"
+	"github.com/graphql-go/graphql
 )
 
 func main() {
-  // Create a subscription manager
-  subscriptionManager := graphqlws.NewSubscriptionManager()
+	// Create a GraphQL schema
+	schema, err := graphql.NewSchema(...)
+	
+	// Create a subscription manager
+	subscriptionManager := graphqlws.NewSubscriptionManager(&schema)
 
-  graphqlwsHandler := graphqlws.NewHandler(graphqlws.HandlerConfig{
-    // Wire up the GraphqL WebSocket handler with the subscription manager
-    SubscriptionManager: subscriptionManager,
+	// Create a WebSocket/HTTP handler
+	graphqlwsHandler := graphqlws.NewHandler(graphqlws.HandlerConfig{
+		// Wire up the GraphqL WebSocket handler with the subscription manager
+		SubscriptionManager: subscriptionManager,
 
-    // Optional: Add a hook to resolve auth tokens into users that are
-    // then stored on the GraphQL WS connections
-    Authenticate: func(authToken string) (interface{}, error) {
-      // This is just a dumb example
-      return "Joe", nil
-    },
-  })
+		// Optional: Add a hook to resolve auth tokens into users that are
+		// then stored on the GraphQL WS connections
+		Authenticate: func(authToken string) (interface{}, error) {
+			// This is just a dumb example
+			return "Joe", nil
+		},
+	})
 
-  // The handler integrates seamlessly with existing HTTP servers
-  http.Handle("/subscriptions", graphqlwsHandler)
-  http.ListenAndServe(":8080", nil)
+	// The handler integrates seamlessly with existing HTTP servers
+	http.Handle("/subscriptions", graphqlwsHandler)
+	http.ListenAndServe(":8080", nil)
 }
 ```
 
@@ -63,28 +70,45 @@ func main() {
 
 ```go
 // This assumes you have access to the above subscription manager
-
-subscriptions := subscriptionManager.Subscriptions()
+subscription := subscriptionManager.Subscriptions()
 
 for _, conn := range subscriptions {
-  if conn.User == "Joe" {
-    for _, subscription := range subscriptions[conn] {
-      // Things you have access to here:
-      subscription.ID            // The subscription ID (unique per conn)
-      subscription.OperationName // The name of the subcription
-      subscription.Query         // The subscription query/queries string
-      subscription.Variables     // The subscription variables
-      subscription.Document      // The GraphQL AST for the subscription
-      subscription.Fields        // The names of top-level queries
-      subscription.Connection    // The GraphQL WS connection
+	// Things you have access to here:
+	conn.ID // The connection ID
+	conn.User // The user returned from the subscription manager's Authenticate
+	
+	for _, subscription := range subscriptions[conn] {
+		// Things you have access to here:
+		subscription.ID            // The subscription ID (unique per conn)
+		subscription.OperationName // The name of the subcription
+		subscription.Query         // The subscription query/queries string
+		subscription.Variables     // The subscription variables
+		subscription.Document      // The GraphQL AST for the subscription
+		subscription.Fields        // The names of top-level queries
+		subscription.Connection    // The GraphQL WS connection
 
-      // Send query results back to the subscriber at any point
-      subscription.SendData(subscription, &graphqlws.DataMessagePayload{
-        Data: ...,   // Can be anything (interface{})
-        Errors: ..., // Optional ([]error)
-      })
-    }
-  }
+		// Prepare an execution context for running the query
+		ctx := context.Context()
+
+		// Re-execute the subscription query
+		params := graphql.Params{
+			Schema:         schema, // The GraphQL schema
+			RequestString:  subscription.Query,
+			VariableValues: subscription.Variables,
+			OperationName:  subscription.OperationName,
+			Context:        ctx,
+		}
+		result := graphql.Do(params)
+
+		// Send query results back to the subscriber at any point
+		data := graphqlws.DataMessagePayload{
+			// Data can be anything (interface{})
+			Data:   result.Data,
+			// Errors is optional ([]error)
+			Errors: graphqlws.ErrorsFromGraphQLErrors(result.Errors),
+		}
+	}
+}
 ```
 
 ## License
