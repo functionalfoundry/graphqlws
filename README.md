@@ -20,9 +20,13 @@ Implementation of the [GraphQL over WebSocket protocol] in Go.
    cd "$GOPATH/github.com/functionalfoundry"
    git clone https://github.com/functionalfoundry/graphqlws
    ```
-3. Run the example server:
+4. Run the tests:
    ```sh
    cd graphqlws
+   go test
+   ```
+3. Run the example server:
+   ```sh
    go run graphqlws/examples/server
    ```
 
@@ -111,7 +115,23 @@ for _, conn := range subscriptions {
 }
 ```
 
-## License
+### Logging
+
+The library uses [logrus](https://github.com/sirupsen/logrus) for logging at the moment.
+In the future we might remove those logs entirely to leave logging entirely to developers
+using `graphqlws`. For the moment, you can control the logging level of `graphqlws`
+by setting it through `logrus`:
+
+```go
+import (
+  log "github.com/sirupsen/logrus"
+)
+
+...
+
+log.SetLevel(log.WarnLevel)
+```
+
 
 Copyright (C) 2017 Functional Foundry, LLC.
 
