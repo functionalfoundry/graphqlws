@@ -171,6 +171,11 @@ func (m *subscriptionManager) RemoveSubscription(
 
 	// Remove the subscription from its connections' subscription map
 	delete(m.subscriptions[conn], subscription.ID)
+
+	// Remove the connection as well if there are no subscriptions left
+	if len(m.subscriptions[conn]) == 0 {
+		delete(m.subscriptions, conn)
+	}
 }
 
 func (m *subscriptionManager) RemoveSubscriptions(conn Connection) {
