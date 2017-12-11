@@ -111,6 +111,11 @@ func (m *subscriptionManager) AddSubscription(
 		"subscription": subscription.ID,
 	}).Info("Add subscription")
 
+	if errors := validateSubscription(subscription); len(errors) > 0 {
+		m.logger.WithField("errors", errors).Warn("Failed to add invalid subscription")
+		return errors
+	}
+
 	// Parse the subscription query
 	document, err := parser.Parse(parser.ParseParams{
 		Source: subscription.Query,
@@ -183,4 +188,26 @@ func (m *subscriptionManager) RemoveSubscriptions(conn Connection) {
 		// Remove the connection's subscription map altogether
 		delete(m.subscriptions, conn)
 	}
+}
+
+func validateSubscription(s *Subscription) []error {
+	errs := []error{}
+
+	if s.ID == "" {
+		errs = append(errs, errors.New("Subscription ID is empty"))
+	}
+
+	if s.Connection == nil {
+		errs = append(errs, errors.New("Subscription is not associated with a connection"))
+	}
+
+	if s.Query == "" {
+		errs = append(errs, errors.New("Subscription query is empty"))
+	}
+
+	if s.SendData == nil {
+		errs = append(errs, errors.New("Subscription has no SendData function set"))
+	}
+
+	return errs
 }
