@@ -74,8 +74,8 @@ subscription := subscriptionManager.Subscriptions()
 
 for _, conn := range subscriptions {
 	// Things you have access to here:
-	conn.ID // The connection ID
-	conn.User // The user returned from the subscription manager's Authenticate
+	conn.ID()   // The connection ID
+	conn.User() // The user returned from the Authenticate function
 	
 	for _, subscription := range subscriptions[conn] {
 		// Things you have access to here:
