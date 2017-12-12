@@ -1,6 +1,7 @@
 # graphqlws
 
 Implementation of the [GraphQL over WebSocket protocol] in Go.
+Brought to you by [Functional Foundry](https://functionalfoundry.com).
 
 [API Documentation](https://godoc.org/github.com/functionalfoundry/graphqlws)
 
@@ -41,7 +42,7 @@ import (
 	"net/http"
 
 	"github.com/functionalfoundry/graphqlws"
-	"github.com/graphql-go/graphql
+	"github.com/graphql-go/graphql"
 )
 
 func main() {
@@ -117,10 +118,10 @@ for _, conn := range subscriptions {
 
 ### Logging
 
-The library uses [logrus](https://github.com/sirupsen/logrus) for logging at the moment.
+`graphqlws` uses [logrus](https://github.com/sirupsen/logrus) for logging.
 In the future we might remove those logs entirely to leave logging entirely to developers
-using `graphqlws`. For the moment, you can control the logging level of `graphqlws`
-by setting it through `logrus`:
+using `graphqlws`. Given the current solution, you can control the logging level of
+`graphqlws` by setting it through `logrus`:
 
 ```go
 import (
@@ -132,8 +133,9 @@ import (
 log.SetLevel(log.WarnLevel)
 ```
 
+## License
 
-Copyright (C) 2017 Functional Foundry, LLC.
+Copyright © 2017 Functional Foundry, LLC.
 
 Licensed under the [MIT License](LICENSE.md).
 
