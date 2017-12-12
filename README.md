@@ -6,6 +6,7 @@ Brought to you by [Functional Foundry](https://functionalfoundry.com).
 [API Documentation](https://godoc.org/github.com/functionalfoundry/graphqlws)
 
 [![Build Status](https://travis-ci.org/functionalfoundry/graphqlws.svg?branch=master)](https://travis-ci.org/functionalfoundry/graphqlws)
+[![Go Report](https://goreportcard.com/badge/github.com/functionalfoundry/graphqlws)](https://goreportcard.com/report/github.com/functionalfoundry/graphqlws)
 
 ## Getting started
 
