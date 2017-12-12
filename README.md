@@ -5,6 +5,8 @@ Brought to you by [Functional Foundry](https://functionalfoundry.com).
 
 [API Documentation](https://godoc.org/github.com/functionalfoundry/graphqlws)
 
+[![Build Status](https://travis-ci.org/functionalfoundry/graphqlws.svg?branch=master)](https://travis-ci.org/functionalfoundry/graphqlws)
+
 ## Getting started
 
 1. Install dependencies:
