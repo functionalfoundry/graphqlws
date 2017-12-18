@@ -62,6 +62,16 @@ type ConnectionSubscriptions map[string]*Subscription
 // subscription IDs to subscriptions.
 type Subscriptions map[Connection]ConnectionSubscriptions
 
+// SubscriptionListener defines an interface for components that
+// are to be notified of added/removed subscriptions.
+type SubscriptionListener interface {
+	// SubscriptionAdded is called whenever a new subscription is added.
+	SubscriptionAdded(Connection, *Subscription)
+
+	// SubscriptionRemoved is called whenever a subscription is removed.
+	SubscriptionRemoved(Connection, *Subscription)
+}
+
 // SubscriptionManager provides a high-level interface to managing
 // and accessing the subscriptions made by GraphQL WS clients.
 type SubscriptionManager interface {
@@ -77,6 +87,13 @@ type SubscriptionManager interface {
 
 	// RemoveSubscriptions removes all subscriptions of a client connection.
 	RemoveSubscriptions(Connection)
+
+	// AddSubscriptionListener adds a listener to be notified when subscriptions
+	// are added or removed.
+	AddSubscriptionListener(SubscriptionListener)
+
+	// RemoveSubscriptionListener removes a previously added listener.
+	RemoveSubscriptionListener(SubscriptionListener)
 }
 
 /**
@@ -87,15 +104,17 @@ type subscriptionManager struct {
 	subscriptions Subscriptions
 	schema        *graphql.Schema
 	logger        *log.Entry
+	listeners     map[SubscriptionListener]bool
 }
 
 // NewSubscriptionManager creates a new subscription manager.
 func NewSubscriptionManager(schema *graphql.Schema) SubscriptionManager {
-	manager := new(subscriptionManager)
-	manager.subscriptions = make(Subscriptions)
-	manager.logger = NewLogger("subscriptions")
-	manager.schema = schema
-	return manager
+	return &subscriptionManager{
+		subscriptions: make(Subscriptions),
+		logger:        NewLogger("subscriptions"),
+		schema:        schema,
+		listeners:     map[SubscriptionListener]bool{},
+	}
 }
 
 func (m *subscriptionManager) Subscriptions() Subscriptions {
@@ -157,6 +176,9 @@ func (m *subscriptionManager) AddSubscription(
 
 	m.subscriptions[conn][subscription.ID] = subscription
 
+	// Notify listeners
+	m.notifySubscriptionAdded(conn, subscription)
+
 	return nil
 }
 
@@ -168,6 +190,9 @@ func (m *subscriptionManager) RemoveSubscription(
 		"conn":         conn.ID(),
 		"subscription": subscription.ID,
 	}).Info("Remove subscription")
+
+	// Notify listeners
+	m.notifySubscriptionRemoved(conn, subscription)
 
 	// Remove the subscription from its connections' subscription map
 	delete(m.subscriptions[conn], subscription.ID)
@@ -192,6 +217,32 @@ func (m *subscriptionManager) RemoveSubscriptions(conn Connection) {
 
 		// Remove the connection's subscription map altogether
 		delete(m.subscriptions, conn)
+	}
+}
+
+func (m *subscriptionManager) AddSubscriptionListener(listener SubscriptionListener) {
+	m.listeners[listener] = true
+}
+
+func (m *subscriptionManager) RemoveSubscriptionListener(listener SubscriptionListener) {
+	delete(m.listeners, listener)
+}
+
+func (m *subscriptionManager) notifySubscriptionAdded(
+	conn Connection,
+	subscription *Subscription,
+) {
+	for listener := range m.listeners {
+		listener.SubscriptionAdded(conn, subscription)
+	}
+}
+
+func (m *subscriptionManager) notifySubscriptionRemoved(
+	conn Connection,
+	subscription *Subscription,
+) {
+	for listener := range m.listeners {
+		listener.SubscriptionRemoved(conn, subscription)
 	}
 }
 
