@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -121,12 +122,14 @@ type Connection interface {
  */
 
 type connection struct {
-	id       string
-	ws       *websocket.Conn
-	config   ConnectionConfig
-	logger   *log.Entry
-	outgoing chan OperationMessage
-	user     interface{}
+	id         string
+	ws         *websocket.Conn
+	config     ConnectionConfig
+	logger     *log.Entry
+	outgoing   chan OperationMessage
+	user       interface{}
+	closeMutex *sync.Mutex
+	closed     bool
 }
 
 func operationMessageForType(messageType string) OperationMessage {
@@ -144,6 +147,8 @@ func NewConnection(ws *websocket.Conn, config ConnectionConfig) Connection {
 	conn.ws = ws
 	conn.config = config
 	conn.logger = NewLogger("connection/" + conn.id)
+	conn.closed = false
+	conn.closeMutex = &sync.Mutex{}
 
 	conn.outgoing = make(chan OperationMessage)
 
@@ -167,25 +172,43 @@ func (conn *connection) SendData(opID string, data *DataMessagePayload) {
 	msg := operationMessageForType(gqlData)
 	msg.ID = opID
 	msg.Payload = data
-	conn.outgoing <- msg
+	conn.closeMutex.Lock()
+	if !conn.closed {
+		conn.outgoing <- msg
+	}
+	conn.closeMutex.Unlock()
 }
 
 func (conn *connection) SendError(err error) {
 	msg := operationMessageForType(gqlError)
 	msg.Payload = err.Error()
-	conn.outgoing <- msg
+	conn.closeMutex.Lock()
+	if !conn.closed {
+		conn.outgoing <- msg
+	}
+	conn.closeMutex.Unlock()
 }
 
 func (conn *connection) sendOperationErrors(opID string, errs []error) {
+	if conn.closed {
+		return
+	}
 	msg := operationMessageForType(gqlError)
 	msg.ID = opID
 	msg.Payload = errs
-	conn.outgoing <- msg
+	conn.closeMutex.Lock()
+	if !conn.closed {
+		conn.outgoing <- msg
+	}
+	conn.closeMutex.Unlock()
 }
 
 func (conn *connection) close() {
 	// Close the write loop by closing the outgoing messages channels
+	conn.closeMutex.Lock()
+	conn.closed = true
 	close(conn.outgoing)
+	conn.closeMutex.Unlock()
 
 	// Notify event handlers
 	if conn.config.EventHandlers.Close != nil {
