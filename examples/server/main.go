@@ -11,8 +11,8 @@ import (
 )
 
 type Document struct {
-	Title   string
-	Content string
+	Title   string `json:"title"`
+	Content string `json:"content"`
 }
 
 var documents = []Document{
@@ -33,15 +33,9 @@ func main() {
 			Fields: graphql.Fields{
 				"title": &graphql.Field{
 					Type: graphql.String,
-					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-						return documents[0].Title, nil
-					},
 				},
 				"content": &graphql.Field{
 					Type: graphql.String,
-					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-						return documents[0].Content, nil
-					},
 				},
 			},
 		},
@@ -53,8 +47,14 @@ func main() {
 			Fields: graphql.Fields{
 				"document": &graphql.Field{
 					Type: documentType,
+					Args: graphql.FieldConfigArgument{
+						"docId": &graphql.ArgumentConfig{
+							Type: graphql.Int,
+						},
+					},
 					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-						return 1, nil
+						docID := p.Args["docId"].(int)
+						return documents[docID], nil
 					},
 				},
 			},
@@ -67,7 +67,22 @@ func main() {
 			Fields: graphql.Fields{
 				"updateDocument": &graphql.Field{
 					Type: documentType,
+					Args: graphql.FieldConfigArgument{
+						"docId": &graphql.ArgumentConfig{
+							Type: graphql.Int,
+						},
+						"title": &graphql.ArgumentConfig{
+							Type: graphql.String,
+						},
+						"content": &graphql.ArgumentConfig{
+							Type: graphql.String,
+						},
+					},
 					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+
+						docID := p.Args["docId"].(int)
+						documents[docID].Title = p.Args["title"].(string)
+						documents[docID].Title = p.Args["title"].(string)
 
 						for _, subscriptions := range subscriptionManager.Subscriptions() {
 							for _, subscription := range subscriptions {
@@ -89,7 +104,7 @@ func main() {
 							}
 						}
 
-						return 1, nil
+						return documents[docID], nil
 					},
 				},
 			},
@@ -103,12 +118,13 @@ func main() {
 				"documentUpdates": &graphql.Field{
 					Type: documentType,
 					Args: graphql.FieldConfigArgument{
-						"postId": &graphql.ArgumentConfig{
-							Type: graphql.String,
+						"docId": &graphql.ArgumentConfig{
+							Type: graphql.Int,
 						},
 					},
 					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-						return 1, nil
+						docID := p.Args["docId"].(int)
+						return documents[docID], nil
 					},
 				},
 			},
