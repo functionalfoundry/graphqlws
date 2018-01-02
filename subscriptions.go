@@ -21,7 +21,7 @@ func ErrorsFromGraphQLErrors(errors []gqlerrors.FormattedError) []error {
 
 // SubscriptionSendDataFunc is a function that sends updated data
 // for a specific subscription to the corresponding subscriber.
-type SubscriptionSendDataFunc func(*Subscription, *DataMessagePayload)
+type SubscriptionSendDataFunc func(*DataMessagePayload)
 
 // Subscription holds all information about a GraphQL subscription
 // made by a client, including a function to send data back to the

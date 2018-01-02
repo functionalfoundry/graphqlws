@@ -125,7 +125,7 @@ func TestSubscriptions_AddingValidSubscriptionsWorks(t *testing.T) {
 		ID:         "1",
 		Connection: &conn,
 		Query:      "subscription { users }",
-		SendData: func(s *graphqlws.Subscription, msg *graphqlws.DataMessagePayload) {
+		SendData: func(msg *graphqlws.DataMessagePayload) {
 			// Do nothing
 		},
 	}
@@ -149,7 +149,7 @@ func TestSubscriptions_AddingValidSubscriptionsWorks(t *testing.T) {
 		ID:         "2",
 		Connection: &conn,
 		Query:      "subscription { users }",
-		SendData: func(s *graphqlws.Subscription, msg *graphqlws.DataMessagePayload) {
+		SendData: func(msg *graphqlws.DataMessagePayload) {
 			// Do nothing
 		},
 	}
@@ -189,7 +189,7 @@ func TestSubscriptions_AddingSubscriptionsTwiceFails(t *testing.T) {
 		ID:         "1",
 		Connection: &conn,
 		Query:      "subscription { users }",
-		SendData: func(s *graphqlws.Subscription, msg *graphqlws.DataMessagePayload) {
+		SendData: func(msg *graphqlws.DataMessagePayload) {
 			// Do nothing
 		},
 	}
@@ -233,7 +233,7 @@ func TestSubscriptions_RemovingSubscriptionsWorks(t *testing.T) {
 		ID:         "1",
 		Connection: &conn,
 		Query:      "subscription { users }",
-		SendData: func(s *graphqlws.Subscription, msg *graphqlws.DataMessagePayload) {
+		SendData: func(msg *graphqlws.DataMessagePayload) {
 			// Do nothing
 		},
 	}
@@ -242,7 +242,7 @@ func TestSubscriptions_RemovingSubscriptionsWorks(t *testing.T) {
 		ID:         "2",
 		Connection: &conn,
 		Query:      "subscription { users }",
-		SendData: func(s *graphqlws.Subscription, msg *graphqlws.DataMessagePayload) {
+		SendData: func(msg *graphqlws.DataMessagePayload) {
 			// Do nothing
 		},
 	}
@@ -285,7 +285,7 @@ func TestSubscriptions_RemovingSubscriptionsOfAConnectionWorks(t *testing.T) {
 		ID:         "1",
 		Connection: &conn1,
 		Query:      "subscription { users }",
-		SendData: func(s *graphqlws.Subscription, msg *graphqlws.DataMessagePayload) {
+		SendData: func(msg *graphqlws.DataMessagePayload) {
 			// Do nothing
 		},
 	}
@@ -294,7 +294,7 @@ func TestSubscriptions_RemovingSubscriptionsOfAConnectionWorks(t *testing.T) {
 		ID:         "2",
 		Connection: &conn1,
 		Query:      "subscription { users }",
-		SendData: func(s *graphqlws.Subscription, msg *graphqlws.DataMessagePayload) {
+		SendData: func(msg *graphqlws.DataMessagePayload) {
 			// Do nothing
 		},
 	}
@@ -303,7 +303,7 @@ func TestSubscriptions_RemovingSubscriptionsOfAConnectionWorks(t *testing.T) {
 		ID:         "1",
 		Connection: &conn2,
 		Query:      "subscription { users }",
-		SendData: func(s *graphqlws.Subscription, msg *graphqlws.DataMessagePayload) {
+		SendData: func(msg *graphqlws.DataMessagePayload) {
 			// Do nothing
 		},
 	}
@@ -312,7 +312,7 @@ func TestSubscriptions_RemovingSubscriptionsOfAConnectionWorks(t *testing.T) {
 		ID:         "2",
 		Connection: &conn2,
 		Query:      "subscription { users }",
-		SendData: func(s *graphqlws.Subscription, msg *graphqlws.DataMessagePayload) {
+		SendData: func(msg *graphqlws.DataMessagePayload) {
 			// Do nothing
 		},
 	}
