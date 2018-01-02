@@ -87,20 +87,26 @@ func main() {
 						for _, subscriptions := range subscriptionManager.Subscriptions() {
 							for _, subscription := range subscriptions {
 
-								params := graphql.Params{
-									Schema:         schema,
-									RequestString:  subscription.Query,
-									VariableValues: subscription.Variables,
-									OperationName:  subscription.OperationName,
-								}
-								result := graphql.Do(params)
+								// JSON interface is float64
+								var subdocID int = int(subscription.Variables["docId"].(float64))
 
-								data := graphqlws.DataMessagePayload{
-									Data:   result.Data,
-									Errors: graphqlws.ErrorsFromGraphQLErrors(result.Errors),
-								}
+								if docID == subdocID {
 
-								subscription.SendData(subscription, &data)
+									params := graphql.Params{
+										Schema:         schema,
+										RequestString:  subscription.Query,
+										VariableValues: subscription.Variables,
+										OperationName:  subscription.OperationName,
+									}
+									result := graphql.Do(params)
+
+									data := graphqlws.DataMessagePayload{
+										Data:   result.Data,
+										Errors: graphqlws.ErrorsFromGraphQLErrors(result.Errors),
+									}
+
+									subscription.SendData(subscription, &data)
+								}
 							}
 						}
 
