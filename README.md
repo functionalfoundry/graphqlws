@@ -115,7 +115,7 @@ for _, conn := range subscriptions {
 			// Errors is optional ([]error)
 			Errors: graphqlws.ErrorsFromGraphQLErrors(result.Errors),
 		}
-		subscription.SendData(subscription, &data)
+		subscription.SendData(&data)
 	}
 }
 ```
