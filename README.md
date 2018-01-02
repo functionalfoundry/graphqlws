@@ -115,6 +115,7 @@ for _, conn := range subscriptions {
 			// Errors is optional ([]error)
 			Errors: graphqlws.ErrorsFromGraphQLErrors(result.Errors),
 		}
+        subscription.SendData(subscription, &data)
 	}
 }
 ```
@@ -138,7 +139,7 @@ log.SetLevel(log.WarnLevel)
 
 ## License
 
-Copyright © 2017 Functional Foundry, LLC.
+Copyright © 2017-2018 Functional Foundry, LLC.
 
 Licensed under the [MIT License](LICENSE.md).
 
