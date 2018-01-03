@@ -63,7 +63,7 @@ func main() {
 
 	var mutationType = graphql.NewObject(
 		graphql.ObjectConfig{
-			Name: "SomeMutation",
+			Name: "Mutation",
 			Fields: graphql.Fields{
 				"updateDocument": &graphql.Field{
 					Type: documentType,
@@ -158,9 +158,11 @@ func main() {
 	})
 
 	graphqlHandler := handler.New(&handler.Config{
-		Schema:   &schema,
-		Pretty:   true,
-		GraphiQL: true,
+		Schema:                &schema,
+		Pretty:                true,
+		GraphiQL:              true,
+		EndpointURL:           "http://localhost:8085",
+		SubscriptionsEndpoint: "ws://localhost:8085/subscriptions",
 	})
 
 	http.Handle("/", graphqlHandler)
