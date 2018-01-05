@@ -69,20 +69,20 @@ func main() {
 					Type: documentType,
 					Args: graphql.FieldConfigArgument{
 						"id": &graphql.ArgumentConfig{
-							Type: graphql.Int,
+							Type: graphql.NewNonNull(graphql.Int),
 						},
 						"title": &graphql.ArgumentConfig{
-							Type: graphql.String,
+							Type: graphql.NewNonNull(graphql.String),
 						},
 						"content": &graphql.ArgumentConfig{
-							Type: graphql.String,
+							Type: graphql.NewNonNull(graphql.String),
 						},
 					},
 					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 
 						id := p.Args["id"].(int)
 						documents[id].Title = p.Args["title"].(string)
-						documents[id].Title = p.Args["title"].(string)
+						documents[id].Content = p.Args["content"].(string)
 
 						for _, subscriptions := range subscriptionManager.Subscriptions() {
 							for _, subscription := range subscriptions {
