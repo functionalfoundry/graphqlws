@@ -12,6 +12,10 @@ import (
 
 // ErrorsFromGraphQLErrors convert from GraphQL errors to regular errors.
 func ErrorsFromGraphQLErrors(errors []gqlerrors.FormattedError) []error {
+	if len(errors) == 0 {
+		return nil
+	}
+
 	out := make([]error, len(errors))
 	for i := range errors {
 		out[i] = errors[i]
