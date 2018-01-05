@@ -83,26 +83,28 @@ func main() {
 						documents[id].Title = p.Args["title"].(string)
 						documents[id].Content = p.Args["content"].(string)
 
-						for _, subscriptions := range subscriptionManager.Subscriptions() {
-							for _, subscription := range subscriptions {
+						for _, subs := range subscriptionManager.Subscriptions() {
+							for _, sub := range subs {
 								// JSON interface is float64
-								var subID int = int(subscription.Variables["id"].(float64))
+								var subID int = int(sub.Variables["id"].(float64))
 
 								if id == subID {
 									params := graphql.Params{
 										Schema:         schema,
-										RequestString:  subscription.Query,
-										VariableValues: subscription.Variables,
-										OperationName:  subscription.OperationName,
+										RequestString:  sub.Query,
+										VariableValues: sub.Variables,
+										OperationName:  sub.OperationName,
 									}
 									result := graphql.Do(params)
 
 									data := graphqlws.DataMessagePayload{
-										Data:   result.Data,
-										Errors: graphqlws.ErrorsFromGraphQLErrors(result.Errors),
+										Data: result.Data,
+										Errors: graphqlws.ErrorsFromGraphQLErrors(
+											result.Errors,
+										),
 									}
 
-									subscription.SendData(subscription, &data)
+									sub.SendData(sub, &data)
 								}
 							}
 						}
