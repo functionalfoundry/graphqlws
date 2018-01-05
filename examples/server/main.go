@@ -160,7 +160,7 @@ func main() {
 		Schema:                &schema,
 		Pretty:                true,
 		GraphiQL:              true,
-		EndpointURL:           "http://localhost:8085",
+		Endpoint:              "http://localhost:8085",
 		SubscriptionsEndpoint: "ws://localhost:8085/subscriptions",
 	})
 
