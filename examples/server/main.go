@@ -48,13 +48,13 @@ func main() {
 				"document": &graphql.Field{
 					Type: documentType,
 					Args: graphql.FieldConfigArgument{
-						"docId": &graphql.ArgumentConfig{
+						"id": &graphql.ArgumentConfig{
 							Type: graphql.Int,
 						},
 					},
 					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-						docID := p.Args["docId"].(int)
-						return documents[docID], nil
+						id := p.Args["id"].(int)
+						return documents[id], nil
 					},
 				},
 			},
@@ -68,7 +68,7 @@ func main() {
 				"updateDocument": &graphql.Field{
 					Type: documentType,
 					Args: graphql.FieldConfigArgument{
-						"docId": &graphql.ArgumentConfig{
+						"id": &graphql.ArgumentConfig{
 							Type: graphql.Int,
 						},
 						"title": &graphql.ArgumentConfig{
@@ -80,17 +80,17 @@ func main() {
 					},
 					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 
-						docID := p.Args["docId"].(int)
-						documents[docID].Title = p.Args["title"].(string)
-						documents[docID].Title = p.Args["title"].(string)
+						id := p.Args["id"].(int)
+						documents[id].Title = p.Args["title"].(string)
+						documents[id].Title = p.Args["title"].(string)
 
 						for _, subscriptions := range subscriptionManager.Subscriptions() {
 							for _, subscription := range subscriptions {
 
 								// JSON interface is float64
-								var subdocID int = int(subscription.Variables["docId"].(float64))
+								var subID int = int(subscription.Variables["id"].(float64))
 
-								if docID == subdocID {
+								if id == subID {
 
 									params := graphql.Params{
 										Schema:         schema,
@@ -110,7 +110,7 @@ func main() {
 							}
 						}
 
-						return documents[docID], nil
+						return documents[id], nil
 					},
 				},
 			},
@@ -124,13 +124,13 @@ func main() {
 				"documentUpdates": &graphql.Field{
 					Type: documentType,
 					Args: graphql.FieldConfigArgument{
-						"docId": &graphql.ArgumentConfig{
+						"id": &graphql.ArgumentConfig{
 							Type: graphql.Int,
 						},
 					},
 					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-						docID := p.Args["docId"].(int)
-						return documents[docID], nil
+						id := p.Args["id"].(int)
+						return documents[id], nil
 					},
 				},
 			},
