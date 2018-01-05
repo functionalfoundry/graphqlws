@@ -10,12 +10,12 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type Document struct {
+type document struct {
 	Title   string `json:"title"`
 	Content string `json:"content"`
 }
 
-var documents = []Document{
+var documents = []document{
 	{Title: "My diary", Content: "Today I had fun with graphqlws"},
 	{Title: "Todo", Content: "Add a complete example"},
 }
