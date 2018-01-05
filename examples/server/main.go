@@ -104,7 +104,7 @@ func main() {
 										),
 									}
 
-									sub.SendData(sub, &data)
+									sub.SendData(&data)
 								}
 							}
 						}
