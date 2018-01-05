@@ -79,19 +79,16 @@ func main() {
 						},
 					},
 					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-
 						id := p.Args["id"].(int)
 						documents[id].Title = p.Args["title"].(string)
 						documents[id].Content = p.Args["content"].(string)
 
 						for _, subscriptions := range subscriptionManager.Subscriptions() {
 							for _, subscription := range subscriptions {
-
 								// JSON interface is float64
 								var subID int = int(subscription.Variables["id"].(float64))
 
 								if id == subID {
-
 									params := graphql.Params{
 										Schema:         schema,
 										RequestString:  subscription.Query,
