@@ -20,8 +20,8 @@ Brought to you by [Functional Foundry](https://functionalfoundry.com).
    ```
 2. Clone the repository:
    ```sh
-   mkdir -p "$GOPATH/github.com/functionalfoundry"
-   cd "$GOPATH/github.com/functionalfoundry"
+   mkdir -p "$GOPATH/src/github.com/functionalfoundry"
+   cd "$GOPATH/src/github.com/functionalfoundry"
    git clone https://github.com/functionalfoundry/graphqlws
    ```
 4. Run the tests:
