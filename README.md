@@ -51,7 +51,7 @@ import (
 func main() {
 	// Create a GraphQL schema
 	schema, err := graphql.NewSchema(...)
-	
+
 	// Create a subscription manager
 	subscriptionManager := graphqlws.NewSubscriptionManager(&schema)
 
@@ -78,17 +78,17 @@ func main() {
 
 ```go
 // This assumes you have access to the above subscription manager
-subscription := subscriptionManager.Subscriptions()
+subscriptions := subscriptionManager.Subscriptions()
 
-for _, conn := range subscriptions {
+for conn, _ := range subscriptions {
 	// Things you have access to here:
 	conn.ID()   // The connection ID
 	conn.User() // The user returned from the Authenticate function
-	
+
 	for _, subscription := range subscriptions[conn] {
 		// Things you have access to here:
 		subscription.ID            // The subscription ID (unique per conn)
-		subscription.OperationName // The name of the subcription
+		subscription.OperationName // The name of the operation
 		subscription.Query         // The subscription query/queries string
 		subscription.Variables     // The subscription variables
 		subscription.Document      // The GraphQL AST for the subscription
