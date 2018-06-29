@@ -93,11 +93,19 @@ type subscriptionManager struct {
 	logger        *log.Entry
 }
 
+func NewSubscriptionManagerWithLogger(schema *graphql.Schema, logger *log.Entry) SubscriptionManager {
+	return newSubscriptionManager(schema, logger)
+}
+
 // NewSubscriptionManager creates a new subscription manager.
 func NewSubscriptionManager(schema *graphql.Schema) SubscriptionManager {
+	return newSubscriptionManager(schema, NewLogger("subscriptions"))
+}
+
+func newSubscriptionManager(schema *graphql.Schema, logger *log.Entry) SubscriptionManager {
 	manager := new(subscriptionManager)
 	manager.subscriptions = make(Subscriptions)
-	manager.logger = NewLogger("subscriptions")
+	manager.logger = logger
 	manager.schema = schema
 	return manager
 }
