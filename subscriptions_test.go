@@ -38,6 +38,7 @@ func (c *mockWebSocketConnection) SendError(err error) {
 
 func TestMain(m *testing.M) {
 	log.SetLevel(log.ErrorLevel)
+	m.Run()
 }
 
 func TestSubscriptions_NewSubscriptionManagerCreatesInstance(t *testing.T) {
