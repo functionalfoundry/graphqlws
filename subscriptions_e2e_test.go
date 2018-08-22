@@ -1,6 +1,7 @@
 package graphqlws_test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net/http"
@@ -44,9 +45,12 @@ func TestSubscriptions(t *testing.T) {
 
 	webSocketConnectUrl := "ws://localhost" + port + wsMountPath
 	log.Infof("Connecting WebSocket client to %s", webSocketConnectUrl)
-	webSocketClient, _, err := websocket.DefaultDialer.Dial(webSocketConnectUrl, graphqlWsHeader)
+	webSocketClient, resp, err := websocket.DefaultDialer.Dial(webSocketConnectUrl, graphqlWsHeader)
 	if err != nil {
-		t.Errorf("couldn't connect to websocket resource: %s", err.Error())
+		buf := new(bytes.Buffer)
+		buf.ReadFrom(resp.Body)
+		responseBody := buf.String()
+		t.Errorf("couldn't connect to websocket resource: '%s', response: '%s'", err.Error(), responseBody)
 		t.FailNow()
 	}
 	defer webSocketClient.Close()
