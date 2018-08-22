@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -14,7 +15,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var port = ":8085"
 var wsMountPath = "/subscriptions"
 var subscriptionName = "StaticString"
 
@@ -32,11 +32,12 @@ func TestSubscriptions(t *testing.T) {
 
 	subscriptionManager := graphqlws.NewSubscriptionManager(schema)
 
-	srv := buildServer(subscriptionManager)
+	srv := startServer(subscriptionManager)
+	defer srv.Close()
 
-	log.Infof("Starting server on port %s", port)
-	go srv.ListenAndServe()
-	time.Sleep(500 * time.Millisecond)
+	port := ":" + strings.Split(srv.URL,":")[2]
+	log.Infof("Starting server on port: %s", port)
+
 
 	graphqlWsHeader := http.Header{}
 	graphqlWsHeader["Sec-WebSocket-Protocol"] = []string{"graphql-ws"}
@@ -154,15 +155,14 @@ func triggerSubscription(payload map[string]interface{}, schema *graphql.Schema,
 	return nil
 }
 
-func buildServer(subscriptionManager graphqlws.SubscriptionManager) *http.Server {
-	log.Info("Starting test server on port " + port)
+func startServer(subscriptionManager graphqlws.SubscriptionManager) *httptest.Server {
 
 	websocketHandler := graphqlws.NewHandler(graphqlws.HandlerConfig{
 		SubscriptionManager: subscriptionManager,
 	})
 
-	srv := &http.Server{Addr: port}
-	http.Handle(wsMountPath, websocketHandler)
+	srv := httptest.NewServer(websocketHandler)
+	time.Sleep(500 * time.Millisecond)
 	return srv
 }
 
