@@ -1,3 +1,7 @@
+**Note: We're looking for a new maintainer for `graphqlws`. Please reach out via jannis@thegraph.com if you're interested.**
+
+---
+
 # graphqlws
 
 Implementation of the [GraphQL over WebSocket protocol] in Go.
@@ -139,7 +143,7 @@ log.SetLevel(log.WarnLevel)
 
 ## License
 
-Copyright © 2017-2018 Functional Foundry, LLC.
+Copyright © 2017-2019 Functional Foundry, LLC.
 
 Licensed under the [MIT License](LICENSE.md).
 
