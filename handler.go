@@ -2,6 +2,7 @@ package graphqlws
 
 import (
 	"net/http"
+	"sync"
 
 	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
@@ -29,6 +30,7 @@ func NewHandler(config HandlerConfig) http.Handler {
 
 	// Create a map (used like a set) to manage client connections
 	var connections = make(map[Connection]bool)
+	connlock := sync.Mutex{}
 
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
@@ -60,6 +62,8 @@ func NewHandler(config HandlerConfig) http.Handler {
 
 						subscriptionManager.RemoveSubscriptions(conn)
 
+						connlock.Lock()
+						defer connlock.Unlock()
 						delete(connections, conn)
 					},
 					StartOperation: func(
@@ -91,6 +95,9 @@ func NewHandler(config HandlerConfig) http.Handler {
 					},
 				},
 			})
+
+			connlock.Lock()
+			defer connlock.Unlock()
 			connections[conn] = true
 		},
 	)
