@@ -30,6 +30,12 @@ const (
 
 	// Timeout for outgoing messages
 	writeTimeout = 10 * time.Second
+
+	// Timeout for reading the next pong message from the peer
+	pongWait = 60 * time.Second
+
+	// Interval for sending pings to peer. Must be less than pongWait
+	pingPeriod = (pongWait * 9) / 10
 )
 
 // InitMessagePayload defines the parameters of a connection
@@ -222,7 +228,11 @@ func (conn *connection) writeLoop() {
 	// Close the WebSocket connection when leaving the write loop;
 	// this ensures the read loop is also terminated and the connection
 	// closed cleanly
-	defer conn.ws.Close()
+	ticker := time.NewTicker(pingPeriod)
+	defer func() {
+		ticker.Stop()
+		conn.ws.Close()
+	}()
 
 	for {
 		select {
@@ -249,6 +259,11 @@ func (conn *connection) writeLoop() {
 				}).Warn("Sending message failed")
 				return
 			}
+		case <-ticker.C:
+			conn.ws.SetWriteDeadline(time.Now().Add(writeTimeout))
+			if err := conn.ws.WriteMessage(websocket.PingMessage, nil); err != nil {
+				return
+			}
 		}
 	}
 }
@@ -258,6 +273,7 @@ func (conn *connection) readLoop() {
 	defer conn.ws.Close()
 
 	conn.ws.SetReadLimit(readLimit)
+	conn.ws.SetReadDeadline(time.Now().Add(pongWait))
 
 	for {
 		// Read the next message received from the client
