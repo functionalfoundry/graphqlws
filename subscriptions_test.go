@@ -3,9 +3,9 @@ package graphqlws_test
 import (
 	"testing"
 
-	"github.com/functionalfoundry/graphqlws"
 	"github.com/graphql-go/graphql"
 	log "github.com/sirupsen/logrus"
+	"github.com/wahed-tech/graphqlws"
 )
 
 // Mock connection

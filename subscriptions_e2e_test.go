@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/functionalfoundry/graphqlws"
 	"github.com/gorilla/websocket"
 	"github.com/graphql-go/graphql"
 	log "github.com/sirupsen/logrus"
+	"github.com/wahed-tech/graphqlws"
 )
 
 var wsMountPath = "/subscriptions"
@@ -36,9 +36,8 @@ func TestSubscriptions(t *testing.T) {
 	srv := startServer(subscriptionManager)
 	defer srv.Close()
 
-	port := ":" + strings.Split(srv.URL,":")[2]
+	port := ":" + strings.Split(srv.URL, ":")[2]
 	log.Infof("Starting server on port: %s", port)
-
 
 	graphqlWsHeader := http.Header{}
 	graphqlWsHeader["Sec-WebSocket-Protocol"] = []string{"graphql-ws"}
@@ -66,7 +65,6 @@ func TestSubscriptions(t *testing.T) {
 	  }
 	}`, subscriptionName)
 
-
 	log.Infof("Subscribing for %s events", subscriptionName)
 	err = webSocketClient.WriteMessage(websocket.TextMessage, []byte(queryMessage))
 	if err != nil {
@@ -80,18 +78,18 @@ func TestSubscriptions(t *testing.T) {
 	go listenForMessages(webSocketClient, messageChannel, numberOfMessages)
 	time.Sleep(500 * time.Millisecond)
 
-	payload := map[string]interface{} {
-		"payload" : testedValue,
+	payload := map[string]interface{}{
+		"payload": testedValue,
 	}
 
-	for i:= 0; i<numberOfMessages; i++ {
+	for i := 0; i < numberOfMessages; i++ {
 		triggerSubscription(payload, schema, subscriptionManager)
 	}
 
 	expectedMessage := fmt.Sprintf("{\"id\":\"1\",\"type\":\"data\",\"payload\":{\"data\":{\"%s\":{\"payload\":\"%s\"}},\"errors\":null}}", subscriptionName, testedValue)
 
-	for i:=0; i<numberOfMessages; i++ {
-		receivedMessage := <- messageChannel
+	for i := 0; i < numberOfMessages; i++ {
+		receivedMessage := <-messageChannel
 		receivedMessage = strings.Replace(receivedMessage, "\n", "", -1)
 		if receivedMessage != expectedMessage {
 			t.Errorf("unexpected value received: '%s', expected: '%s'", receivedMessage, expectedMessage)
